@@ -26,7 +26,7 @@ extension EmojiArt.EmojiInfo {
 
 
 class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrollViewDelegate,UICollectionViewDataSource,UICollectionViewDragDelegate, UICollectionViewDelegate,UICollectionViewDropDelegate ,UICollectionViewDelegateFlowLayout{
-
+    
     // MARK: - Model
     
     var emojiArt: EmojiArt? {
@@ -34,7 +34,7 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
             if let url = emojiArtBackgroundImage.url { 
                 
                 let emojis = emojiArtView.subviews.compactMap({$0 as? UILabel}).compactMap({EmojiArt.EmojiInfo(label: $0)})
-        
+                
                 return EmojiArt(url: url, emojis: emojis)
             }
             return nil
@@ -63,19 +63,27 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
     var document: EmojiArtDocument?
     
     
-    @IBAction func save(_ sender: UIBarButtonItem? = nil) {
+    //    @IBAction func save(_ sender: UIBarButtonItem? = nil) {
+    //
+    //        document?.emojiArt = emojiArt
+    //        if document?.emojiArt != nil {
+    //            document?.updateChangeCount(.done)
+    //        }
+    //    }
+    func documentChanged() {
         document?.emojiArt = emojiArt
         if document?.emojiArt != nil {
             document?.updateChangeCount(.done)
         }
     }
     
+    
     @IBAction func close(_ sender: UIBarButtonItem) {
-        save()
+//        save()
         if document?.emojiArt != nil {
             document?.thumbnail = emojiArtView.snapshot
         }
-
+        
         dismiss(animated: true) {
             self.document?.close()
         }
@@ -94,7 +102,7 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
     
     
     
-     
+    
     // MARK: - Storyboard
     
     @IBOutlet weak var dropZone: UIView!{
@@ -102,7 +110,7 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
             dropZone.addInteraction(UIDropInteraction(delegate: self))
         }
     }
-
+    
     @IBOutlet weak var emojiCollectionView: UICollectionView! {
         didSet{
             emojiCollectionView.dataSource = self
@@ -246,12 +254,12 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
                     // Remove where the thing coming from
                     // PerformBatchUpdates closure do thing sync
                     collectionView.performBatchUpdates({
-                            emojis.remove(at: sourceIndexPath.item)
-                            emojis.insert(attributedString.string, at: destinationIndexPath.item)
-                            // Do not reload data in the middle of the drag
-                            collectionView.deleteItems(at: [sourceIndexPath])
-                            collectionView.insertItems(at: [destinationIndexPath])
-                        })
+                        emojis.remove(at: sourceIndexPath.item)
+                        emojis.insert(attributedString.string, at: destinationIndexPath.item)
+                        // Do not reload data in the middle of the drag
+                        collectionView.deleteItems(at: [sourceIndexPath])
+                        collectionView.insertItems(at: [destinationIndexPath])
+                    })
                     
                     coordinator.drop(item.dragItem, toItemAt: destinationIndexPath)
                 }
@@ -270,14 +278,14 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
                                 self.emojis.insert(attributedString.string, at: insertionIndexPath.item)
                             })
                         } else {
-                                placeholderContext.deletePlaceholder()
+                            placeholderContext.deletePlaceholder()
                         }
                     }
                 }
             }
         }
     }
-
+    
     var emojiArtView = EmojiArtView()
     
     
@@ -339,19 +347,58 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
     }
     
     
+    //MARK: - Alert
+    
+    private var suppressBadURLWarnings = false
+    
+    private func presentBadURLWarning(for url: URL?) {
+        if !suppressBadURLWarnings {
+            let alert = UIAlertController(
+                title: "Image Transfer Failed",
+                message: "Couldn't transfer the dropped image from its source.\nShow this warning in the future?",
+                preferredStyle: .alert)
+            
+            alert.addAction(UIAlertAction(
+                title: "Keep Warning",
+                style: .default
+            ))
+            
+            alert.addAction(UIAlertAction(
+                title: "Stop Warning",
+                style: .destructive,
+                handler: { action in
+                    self.suppressBadURLWarnings = true
+            }
+            ))
+            
+            present(alert, animated: true)
+        }
+    }
     
     func dropInteraction(_ interaction: UIDropInteraction, performDrop session: UIDropSession) {
         
         imageFetcher = ImageFetcher(){ (url, image) in
             DispatchQueue.main.async {
                 self.emojiArtBackgroundImage = (url, image)
+                self.documentChanged()
             }
         }
         
         
         session.loadObjects(ofClass: NSURL.self, completion: {nsurls in
             if let url = nsurls.first as? URL {
-                self.imageFetcher.fetch(url)
+
+                DispatchQueue.global(qos: .userInitiated).async {
+                    if let imageData = try? Data(contentsOf: url.imageURL), let image = UIImage(data: imageData){
+                        DispatchQueue.main.async {
+                            self.emojiArtBackgroundImage = (url, image)
+                            self.documentChanged()
+                        }
+                    } else {
+                        self.presentBadURLWarning(for: url)
+                    }
+                    
+                }
             }
         })
         
