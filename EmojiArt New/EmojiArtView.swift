@@ -9,7 +9,7 @@
 import UIKit
 
 class EmojiArtView: UIView, UIDropInteractionDelegate {
-
+    
     // MARK: - Initialization
     
     override init(frame: CGRect) {
@@ -44,10 +44,16 @@ class EmojiArtView: UIView, UIDropInteractionDelegate {
         }
     }
     
+    private var font: UIFont {
+        return
+            UIFontMetrics(forTextStyle: .body).scaledFont(for: UIFont.preferredFont(forTextStyle: .body).withSize(64.0))
+    }
+    
     func addLabel(with attributedString: NSAttributedString, centeredAt point: CGPoint){
         let label = UILabel()
         label.backgroundColor = .clear
-        label.attributedText = attributedString
+        label.attributedText = attributedString.font != nil ? attributedString : NSAttributedString(string: attributedString.string,attributes: [.font:self.font])
+        
         label.sizeToFit()
         label.center = point
         addEmojiArtGestureRecognizers(to: label)

@@ -209,7 +209,7 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
         }
     }
     
-    
+    // MARK: - UICollectionViewDropDelegate
     // Drop random strings
     func collectionView(_ collectionView: UICollectionView, canHandle session: UIDropSession) -> Bool {
         return session.canLoadObjects(ofClass: NSAttributedString.self)
@@ -222,7 +222,9 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
             // Find out if the cell in the collection already or outside the collection
             let isSelf = (session.localDragSession?.localContext) as? UICollectionView == collectionView
             // Constructor intent: into the cell or add a cell (this demo implement add cell)
-            return UICollectionViewDropProposal(operation: isSelf ? .move : .copy, intent: .insertAtDestinationIndexPath)
+            return UICollectionViewDropProposal(
+                operation: isSelf ? .move : .copy,
+                intent: .insertAtDestinationIndexPath)
         } else {
             return UICollectionViewDropProposal(operation: .cancel)
         }
@@ -275,22 +277,7 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
             }
         }
     }
-    
-    
-    
-    
-    
-    func dropInteraction(_ interaction: UIDropInteraction, canHandle session: UIDropSession) -> Bool {
-        // NSURL objc class
-        return session.canLoadObjects(ofClass: NSURL.self) && session.canLoadObjects(ofClass: UIImage.self)
-    }
-    
-    func dropInteraction(_ interaction: UIDropInteraction, sessionDidUpdate session: UIDropSession) -> UIDropProposal {
-        return UIDropProposal(operation: .copy)
-    }
-    
-    var imageFetcher: ImageFetcher!
-    
+
     var emojiArtView = EmojiArtView()
     
     
@@ -336,6 +323,19 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
                 scrollView?.zoomScale = max(dropZone.bounds.size.width / size.width, dropZone.bounds.size.height / size.height)
             }
         }
+    }
+    
+    // MARK: - UIDropInteractionDelegate
+    
+    var imageFetcher: ImageFetcher!
+    
+    func dropInteraction(_ interaction: UIDropInteraction, canHandle session: UIDropSession) -> Bool {
+        // NSURL objc class
+        return session.canLoadObjects(ofClass: NSURL.self) && session.canLoadObjects(ofClass: UIImage.self)
+    }
+    
+    func dropInteraction(_ interaction: UIDropInteraction, sessionDidUpdate session: UIDropSession) -> UIDropProposal {
+        return UIDropProposal(operation: .copy)
     }
     
     
