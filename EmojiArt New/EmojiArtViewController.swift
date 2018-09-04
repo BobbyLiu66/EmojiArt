@@ -38,8 +38,12 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
                     ppc.delegate = self
                 }
             }
+        } else if segue.identifier == "Embed Document Info" {
+            embeddedDocInfo = segue.destination.contents as? DocumentInfoViewController
         }
     }
+    
+    private var embeddedDocInfo: DocumentInfoViewController?
     
     func adaptivePresentationStyle(
         for controller: UIPresentationController,
@@ -47,6 +51,11 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
         ) -> UIModalPresentationStyle {
         return .none
     }
+    
+    
+    @IBOutlet weak var embeddedDocInfoHeight: NSLayoutConstraint!
+    
+    @IBOutlet weak var embeddedDocInfoWidth: NSLayoutConstraint!
     
     
     // MARK: - Unwind segue
@@ -129,6 +138,12 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
                     queue: OperationQueue.main,
                     using: { notification in
                         print("DocumentState changed to \(self.document!.documentState)")
+                        
+                        if self.document!.documentState == .normal, let docInfoVC = self.embeddedDocInfo {
+                            docInfoVC.document = self.document
+                            self.embeddedDocInfoWidth.constant = docInfoVC.preferredContentSize.width
+                            self.embeddedDocInfoHeight.constant = docInfoVC.preferredContentSize.height
+                        }
                         
         })
         
