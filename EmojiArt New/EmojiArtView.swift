@@ -8,7 +8,22 @@
 
 import UIKit
 
+protocol EmojiArtViewDelegate: class {
+    func emojiArtDidChange(_ sender: EmojiArtView)
+}
+
+extension Notification.Name {
+    static let EmojiArtViewChange =
+        Notification.Name("EmojiArtViewChange")
+}
+
+
 class EmojiArtView: UIView, UIDropInteractionDelegate {
+    
+    // MARK: - Delegation
+    
+    // Using weak avoid memory cycle
+    weak var delegate: EmojiArtViewDelegate?
     
     // MARK: - Initialization
     
@@ -26,6 +41,10 @@ class EmojiArtView: UIView, UIDropInteractionDelegate {
         addInteraction(UIDropInteraction(delegate: self))
     }
     
+    
+    
+    
+    
     func dropInteraction(_ interaction: UIDropInteraction, canHandle session: UIDropSession) -> Bool {
         return session.canLoadObjects(ofClass: NSAttributedString.self)
     }
@@ -40,6 +59,10 @@ class EmojiArtView: UIView, UIDropInteractionDelegate {
             let dropPoint = session.location(in: self)
             for attributedString in providers as? [NSAttributedString] ?? [] {
                 self.addLabel(with: attributedString, centeredAt: dropPoint)
+                self.delegate?.emojiArtDidChange(self)
+                NotificationCenter.default.post(
+                    name: .EmojiArtViewChange,
+                    object: self)
             }
         }
     }
@@ -48,6 +71,8 @@ class EmojiArtView: UIView, UIDropInteractionDelegate {
         return
             UIFontMetrics(forTextStyle: .body).scaledFont(for: UIFont.preferredFont(forTextStyle: .body).withSize(64.0))
     }
+    
+    private var labelObserversions = [UIView:NSKeyValueObservation]()
     
     func addLabel(with attributedString: NSAttributedString, centeredAt point: CGPoint){
         let label = UILabel()
@@ -58,8 +83,23 @@ class EmojiArtView: UIView, UIDropInteractionDelegate {
         label.center = point
         addEmojiArtGestureRecognizers(to: label)
         addSubview(label)
+        labelObserversions[label] = label.observe(\.center) { (label, change) in
+            self.delegate?.emojiArtDidChange(self)
+            NotificationCenter.default.post(
+                name: .EmojiArtViewChange,
+                object: self)
+        }
     }
     
+    override func willRemoveSubview(_ subview: UIView) {
+        super.willRemoveSubview(subview)
+        if labelObserversions[subview] != nil {
+            labelObserversions[subview] = nil
+        }
+        
+    }
+    
+    // MARK: - Drawing the Backgrounf
     
     var backgroundImage: UIImage? { didSet{ setNeedsDisplay() } }
     

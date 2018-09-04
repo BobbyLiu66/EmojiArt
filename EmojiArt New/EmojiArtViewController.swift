@@ -25,7 +25,31 @@ extension EmojiArt.EmojiInfo {
 }
 
 
-class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrollViewDelegate,UICollectionViewDataSource,UICollectionViewDragDelegate, UICollectionViewDelegate,UICollectionViewDropDelegate ,UICollectionViewDelegateFlowLayout{
+class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrollViewDelegate,UICollectionViewDataSource,UICollectionViewDragDelegate, UICollectionViewDelegate,UICollectionViewDropDelegate ,UICollectionViewDelegateFlowLayout, UIPopoverPresentationControllerDelegate{
+    
+    // MARK : - Navigation
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.identifier == "Show Document Info" {
+            if let destination = segue.destination.contents as? DocumentInfoViewController {
+                document?.thumbnail = emojiArtView.snapshot
+                destination.document = document
+                if let ppc = destination.popoverPresentationController {
+                    ppc.delegate = self
+                }
+            }
+        }
+    }
+    
+    func adaptivePresentationStyle(
+        for controller: UIPresentationController,
+        traitCollection: UITraitCollection
+        ) -> UIModalPresentationStyle {
+        return .none
+    }
+    
+    
+    
     
     // MARK: - Model
     
@@ -62,14 +86,7 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
     
     var document: EmojiArtDocument?
     
-    
-    //    @IBAction func save(_ sender: UIBarButtonItem? = nil) {
-    //
-    //        document?.emojiArt = emojiArt
-    //        if document?.emojiArt != nil {
-    //            document?.updateChangeCount(.done)
-    //        }
-    //    }
+
     func documentChanged() {
         document?.emojiArt = emojiArt
         if document?.emojiArt != nil {
@@ -79,22 +96,50 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
     
     
     @IBAction func close(_ sender: UIBarButtonItem) {
-//        save()
+        if let observer = emojiArtViewObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        
         if document?.emojiArt != nil {
             document?.thumbnail = emojiArtView.snapshot
         }
         
-        dismiss(animated: true) {
-            self.document?.close()
+        presentingViewController?.dismiss(animated: true) {
+            self.document?.close { success in
+                if let observer = self.documentObserver {
+                    NotificationCenter.default.removeObserver(observer)
+                }
+            }
         }
     }
     
+    private var documentObserver: NSObjectProtocol?
+    private var emojiArtViewObserver: NSObjectProtocol?
+    
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        
+        documentObserver = NotificationCenter.default.addObserver(
+            forName: Notification.Name.UIDocumentStateChanged,
+                    object: document,
+                    queue: OperationQueue.main,
+                    using: { notification in
+                        print("DocumentState changed to \(self.document!.documentState)")
+                        
+        })
+        
         document?.open{ success in
             if success {
                 self.title = self.document?.localizedName
                 self.emojiArt = self.document?.emojiArt
+                self.emojiArtViewObserver = NotificationCenter.default.addObserver(
+                    forName: .EmojiArtViewChange,
+                    object: self.emojiArtView,
+                    queue: OperationQueue.main,
+                    using: { (notification) in
+                        self.documentChanged()
+                }
+                )
             }
         }
     }
@@ -217,7 +262,9 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
         }
     }
     
+    
     // MARK: - UICollectionViewDropDelegate
+    
     // Drop random strings
     func collectionView(_ collectionView: UICollectionView, canHandle session: UIDropSession) -> Bool {
         return session.canLoadObjects(ofClass: NSAttributedString.self)
@@ -286,7 +333,7 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
         }
     }
     
-    var emojiArtView = EmojiArtView()
+
     
     
     @IBOutlet weak var scrollViewHeight: NSLayoutConstraint!
@@ -310,6 +357,12 @@ class EmojiArtViewController: UIViewController,UIDropInteractionDelegate,UIScrol
     func viewForZooming(in scrollView: UIScrollView)-> UIView?{
         return emojiArtView
     }
+    
+    // MARK: - Emoji Art View
+    
+    lazy var emojiArtView =  EmojiArtView()
+    
+
     
     private var _emojiArtBackgroundImageURL: URL?
     
