@@ -9,4 +9,4 @@
 * Popover/Modal/Unwind/Embed Segue
 * Camera (Did not test yet, do not have a real devise)
 ### Main feature demo
-![](https://storage.googleapis.com/chatroom.geekliubo.com/github/emojiArt.gif)
+![](https://storage.googleapis.com/chatroom.geekliubo.com/github/emoji_art.gif)
